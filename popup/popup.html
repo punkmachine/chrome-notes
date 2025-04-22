@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <style>
+      :root {
+        --primary-color: #4a6baf;
+        --secondary-color: #f5f7fa;
+        --text-color: #333;
+        --accent-color: #6d8ad6;
+        --border-radius: 8px;
+        --box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      }
+
+      body {
+        padding: 0;
+        margin: 0;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background-color: var(--secondary-color);
+        color: var(--text-color);
+        width: 320px;
+        height: 400px;
+        overflow: hidden;
+      }
+
+      .container {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+      }
+
+      .header {
+        background-color: var(--primary-color);
+        color: white;
+        padding: 16px;
+        border-radius: 0 0 var(--border-radius) var(--border-radius);
+        box-shadow: var(--box-shadow);
+      }
+
+      .header h1 {
+        margin: 0;
+        font-size: 1.4rem;
+        font-weight: 600;
+      }
+
+      .version-badge {
+        background-color: rgba(255, 255, 255, 0.2);
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        margin-top: 8px;
+        display: inline-block;
+      }
+
+      .content {
+        flex: 1;
+        padding: 16px;
+        overflow-y: auto;
+      }
+
+      .description {
+        background-color: white;
+        border-radius: var(--border-radius);
+        padding: 16px;
+        margin-bottom: 16px;
+        box-shadow: var(--box-shadow);
+      }
+
+      .description p {
+        margin: 0 0 8px 0;
+        line-height: 1.5;
+      }
+
+      .footer {
+        padding: 12px 16px;
+        background-color: white;
+        text-align: center;
+        font-size: 0.8rem;
+        color: #888;
+        border-top: 1px solid #eee;
+      }
+
+      .footer a {
+        color: var(--primary-color);
+        text-decoration: none;
+      }
+
+      .footer a:hover {
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>Заметки на странице</h1>
+        <div class="version-badge">Версия 1.0.0</div>
+      </div>
+
+      <div class="content">
+        <div class="description">
+          <p>Это расширение позволяет вам добавлять и сохранять заметки прямо на веб-страницах, которые вы посещаете.</p>
+        </div>
+      </div>
+
+      <div class="footer">
+        Powered by <a href="https://webdev.kz" target="_blank">webdev.kz</a>
+      </div>
+    </div>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
