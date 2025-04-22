@@ -66,6 +66,11 @@ const btnIcon = `
     <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
   </svg>
 `;
+const deleteIcon = `
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+    <path fill="currentColor" d="M7 21q-.825 0-1.412-.587T5 19V6H4V4h5V3h6v1h5v2h-1v13q0 .825-.587 1.413T17 21zM17 6H7v13h10zM9 17h2V8H9zm4 0h2V8h-2zM7 6v13z" />
+  </svg>
+`;
 
 /**
   Сервисные функции
@@ -174,16 +179,21 @@ function createNoteItemHTML(note) {
   const displayText = note.text.length > 70 ? note.text.substring(0, 70) + '...' : note.text;
 
   return `
-    <div style="font-size: 14px; line-height: 1.4; margin-bottom: 4px; word-break: break-word;">${displayText}</div>
     <div style="display: flex; justify-content: space-between; align-items: center;">
-      <button class="${noteDeleteBtnClass}" data-timestamp="${note.timestamp}" style="
-        background-color: transparent;
-        border: none;
-        color: #ff5252;
-        cursor: pointer;
-        font-size: 12px;
-        padding: 2px 6px;
-      ">Удалить</button>
+      <div style="font-size: 14px; line-height: 1.4; margin-bottom: 4px; word-break: break-word;">${displayText}</div>
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <button class="${noteDeleteBtnClass}" data-timestamp="${note.timestamp}" style="
+          background-color: transparent;
+          border: none;
+          color: #ff5252;
+          cursor: pointer;
+          padding: 2px;
+          display: flex;
+          align-items: center;
+          opacity: 0.7;
+          transition: opacity 0.2s;
+        ">${deleteIcon}</button>
+      </div>
     </div>
   `;
 }
@@ -195,11 +205,25 @@ function createNoteItem(note) {
   noteElement.innerHTML = createNoteItemHTML(note);
 
   noteElement.onmouseover = function() {
-    this.style.backgroundColor = '#f8f9fb';
+    this.style.backgroundColor = 'rgba(0, 0, 0, 0.08)';
   };
 
   noteElement.onmouseout = function() {
     this.style.backgroundColor = 'white';
+  };
+
+  noteElement.querySelector(`.${noteDeleteBtnClass}`).onmouseover = function(e) {
+    e.stopPropagation();
+
+    this.style.opacity = '1';
+    this.style.color = '#ff0000';
+  };
+
+  noteElement.querySelector(`.${noteDeleteBtnClass}`).onmouseout = function(e) {
+    e.stopPropagation();
+
+    this.style.opacity = '0.7';
+    this.style.color = '#ff5252';
   };
 
   noteElement.addEventListener('click', function(e) {
