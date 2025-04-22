@@ -234,28 +234,107 @@ function createNoteItem(note) {
       behavior: 'smooth'
     });
 
-    // TODO: Добавить выделение текста
-    // const highlightElement = document.createElement('div');
-    // highlightElement.style.cssText = `
-    //   position: absolute;
-    //   left: ${note.position.left - 20}px;
-    //   top: ${note.position.top - 20}px;
-    //   width: 40px;
-    //   height: 40px;
-    //   background-color: rgba(74, 107, 175, 0.3);
-    //   border-radius: 50%;
-    //   pointer-events: none;
-    //   animation: pageNotesPulse 1.5s ease-out;
-    //   animation-iteration-count: 3;
-    // `;
-
-    // document.body.appendChild(highlightElement);
-
-    // // Удаляем выделение через 5 секунд
-    // setTimeout(() => {
-    //   highlightElement.remove();
-    // }, 5000);
+    highlightTextOnPage(note.text, note.position);
   });
+
+  // Функция для поиска и выделения текста на странице
+  function highlightTextOnPage(text, position) {
+    // экранирование спецсимволов для поиска
+    const searchText = text.trim()
+      .replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    if (!searchText) return;
+
+    // TreeWalker для обхода текстовых узлов страницы
+    const walker = document.createTreeWalker(
+      document.body,
+      NodeFilter.SHOW_TEXT,
+      null,
+      false
+    );
+
+    let node;
+    let foundNode = null;
+    let minDistance = Infinity;
+
+    // Находим ближайший к указанной позиции текстовый узел, содержащий искомый текст
+    while (node = walker.nextNode()) {
+      // Пропускаем узлы внутри наших элементов
+      if (node.parentElement.closest(`#${listId}`) || node.parentElement.closest(`#${btnId}`)) {
+        continue;
+      }
+
+      const content = node.textContent;
+      if (content.includes(searchText) || content.includes(text.substring(0, 20))) {
+        // Проверяем расстояние от позиции заметки до узла
+        const range = document.createRange();
+        range.selectNodeContents(node);
+        const rect = range.getBoundingClientRect();
+
+        const distance = Math.sqrt(
+          Math.pow(position.left - (rect.left + window.scrollX), 2) +
+          Math.pow(position.top - (rect.top + window.scrollY), 2)
+        );
+
+        if (distance < minDistance) {
+          minDistance = distance;
+          foundNode = node;
+        }
+      }
+    }
+
+    if (foundNode) {
+      // Создаем диапазон для выделения
+      const range = document.createRange();
+      const content = foundNode.textContent;
+
+      // Находим индекс начала и конца искомого текста
+      let startIndex = content.indexOf(searchText);
+      if (startIndex === -1) {
+        startIndex = content.indexOf(text.substring(0, 20));
+      }
+
+      if (startIndex !== -1) {
+        const endIndex = startIndex + Math.min(searchText.length, 50);
+
+        range.setStart(foundNode, startIndex);
+        range.setEnd(foundNode, endIndex);
+
+        // Создаем выделение
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+
+        // Добавляем фоновую подсветку
+        const highlight = document.createElement('span');
+        highlight.className = 'page-notes-highlight';
+        highlight.style.cssText = `
+          background-color: rgba(255, 235, 59, 0.5);
+          transition: background-color 0.5s;
+        `;
+
+        try {
+          range.surroundContents(highlight);
+
+          // Анимируем подсветку
+          setTimeout(() => {
+            highlight.style.backgroundColor = 'rgba(255, 235, 59, 0.2)';
+          }, 1000);
+
+          // Удаляем подсветку через 5 секунд, восстанавливая исходный текст
+          setTimeout(() => {
+            const parent = highlight.parentNode;
+            if (parent) {
+              const textNode = document.createTextNode(highlight.textContent);
+              parent.replaceChild(textNode, highlight);
+            }
+          }, 5000);
+        } catch (e) {
+          console.log("Ошибка при создании подсветки:", e);
+        }
+      }
+    }
+  }
 
   noteElement.querySelector(`.${noteDeleteBtnClass}`).addEventListener('click', function(e) {
     e.stopPropagation();
@@ -376,6 +455,9 @@ function displayBookmarksList() {
     });
 }
 
+/**
+ * Прочий функционал
+ */
 document.addEventListener('mouseup', function(e) {
   // Короткая задержка, чтобы дать возможность сработать onclick кнопки
   setTimeout(() => {
@@ -423,6 +505,12 @@ document.addEventListener('click', function(e) {
 
 const style = document.createElement('style');
 style.textContent = `
+  .page-notes-highlight {
+    background-color: rgba(255, 235, 59, 0.5);
+    border-radius: 2px;
+    animation: highlightPulse 2s infinite;
+  }
+
   #${btnId} {
     animation: pageNotesFadeIn 0.3s ease-in-out;
   }
@@ -441,6 +529,12 @@ style.textContent = `
     0% { transform: scale(1); opacity: 1; }
     50% { transform: scale(1.5); opacity: 0.4; }
     100% { transform: scale(1); opacity: 1; }
+  }
+
+  @keyframes highlightPulse {
+    0% { background-color: rgba(255, 235, 59, 0.5); }
+    50% { background-color: rgba(255, 235, 59, 0.2); }
+    100% { background-color: rgba(255, 235, 59, 0.5); }
   }
 `;
 document.head.appendChild(style);
