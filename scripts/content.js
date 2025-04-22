@@ -12,6 +12,7 @@ const styles = {
   'z-index': '9999',
   'box-shadow': '0 2px 5px rgba(0, 0, 0, 0.2)',
   'transition': 'transform 0.2s ease',
+  'pointer-events': 'auto'
 }
 
 function removeOldButton() {
@@ -43,6 +44,18 @@ function createBookmarkButton() {
     </svg>
   `;
 
+  button.onclick = function(e) {
+    e.stopPropagation();
+
+    const selection = window.getSelection();
+    const selectedText = selection.toString().trim();
+
+    saveNote(selectedText);
+    this.remove();
+
+    return false;
+  };
+
   return button;
 }
 
@@ -61,7 +74,6 @@ function getSelectionPosition() {
 
   return null;
 }
-
 
 function saveNote(selectedText) {
   const position = getSelectionPosition();
@@ -99,28 +111,39 @@ function saveNote(selectedText) {
 }
 
 document.addEventListener('mouseup', function(e) {
-  const selection = window.getSelection();
-  const selectedText = selection.toString().trim();
+  // Короткая задержка, чтобы дать возможность сработать onclick кнопки
+  setTimeout(() => {
+    const selection = window.getSelection();
+    const selectedText = selection.toString().trim();
 
-  if (selectedText && e.target.id !== btnId) {
-    const position = getSelectionPosition();
-
-    if (position) {
-      const button = createBookmarkButton();
-
-      button.style.left = `${position.left + 5}px`;
-      button.style.top = `${position.top - 20}px`;
-
-      console.log('перед назначением');
-      button.addEventListener('click', function() {
-        console.log('сам клик');
-        saveNote(selectedText);
-        this.remove();
-      });
-
-      document.body.appendChild(button);
+    // Проверяем, что это не клик по нашей кнопке
+    if (e.target.id === btnId || e.target.closest(`#${btnId}`)) {
+      return;
     }
-  } else if (!selectedText || (e.target.id !== btnId && !e.target.closest(`#${btnId}`))) {
+
+    if (selectedText) {
+      const position = getSelectionPosition();
+
+      if (position) {
+        const button = createBookmarkButton();
+
+        button.style.left = `${position.left + 5}px`;
+        button.style.top = `${position.top - 20}px`;
+
+        document.body.appendChild(button);
+      }
+    } else {
+      const button = document.getElementById(btnId);
+
+      if (button) {
+        button.remove();
+      }
+    }
+  }, 10);
+});
+
+document.addEventListener('click', function(e) {
+  if (e.target.id !== btnId && !e.target.closest(`#${btnId}`)) {
     const button = document.getElementById(btnId);
 
     if (button) {
