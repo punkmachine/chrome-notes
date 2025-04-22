@@ -1,5 +1,13 @@
 const btnId = 'page-notes-bookmark';
-const styles = {
+const listId = 'page-notes-list';
+const closeNotesListBtnId = 'close-notes-list';
+
+const noteDeleteBtnClass = 'note-delete-btn';
+const notesContainerClass = 'notes-container';
+
+const storageId = 'page-notes';
+
+const btnStyles = {
   'position': 'absolute',
   'width': '28px',
   'height': '28px',
@@ -13,50 +21,57 @@ const styles = {
   'box-shadow': '0 2px 5px rgba(0, 0, 0, 0.2)',
   'transition': 'transform 0.2s ease',
   'pointer-events': 'auto'
-}
+};
+const bookmarkListStyles = {
+  'position': 'fixed',
+  'top': '20px',
+  'right': '20px',
+  'z-index': '9998',
+  'width': '300px',
+  'max-height': '400px',
+  'background-color': '#f5f7fa',
+  'border-radius': '8px',
+  'box-shadow': '0 4px 12px rgba(0, 0, 0, 0.1)',
+  'overflow': 'hidden',
+  'color': '#333',
+  'display': 'flex',
+  'flex-direction': 'column',
+  'animation': 'pageNotesSlideIn 0.3s ease-out'
+};
+const noteElementStyles = {
+  'padding': '12px 16px',
+  'border-bottom': '1px solid #e1e5ea',
+  'background-color': 'white',
+  'cursor': 'pointer',
+  'transition': 'background-color 0.2s'
+};
+const headerBookmarkListStyles = {
+  'background-color': '#4a6baf',
+  'color': 'white',
+  'padding': '16px',
+  'border-radius': '8px 8px 0 0',
+  'box-shadow': '0 1px 3px rgba(0, 0, 0, 0.1)',
+  'display': 'flex',
+  'justify-content': 'space-between',
+  'align-items': 'center'
+};
+const notesContainerStyles = {
+  'overflow-y': 'auto',
+  'max-height': '300px',
+  'padding': '0'
+};
 
-function removeOldButton() {
-  let existingButton = document.getElementById(btnId);
+const btnIcon = `
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+  </svg>
+`;
 
-  if (existingButton) {
-    existingButton.remove();
-  }
-}
-
-function createBookmarkButton() {
-  removeOldButton();
-
-  const button = document.createElement('div');
-  button.id = btnId;
-  button.style.cssText = Object.entries(styles).map(([key, value]) => `${key}: ${value}`).join(';');
-
-  button.onmouseover = function() {
-    this.style.transform = 'scale(1.1)';
-  };
-
-  button.onmouseout = function() {
-    this.style.transform = 'scale(1)';
-  };
-
-  button.innerHTML = `
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
-    </svg>
-  `;
-
-  button.onclick = function(e) {
-    e.stopPropagation();
-
-    const selection = window.getSelection();
-    const selectedText = selection.toString().trim();
-
-    saveNote(selectedText);
-    this.remove();
-
-    return false;
-  };
-
-  return button;
+/**
+  Сервисные функции
+*/
+function getCSSText(styles) {
+  return Object.entries(styles).map(([key, value]) => `${key}: ${value}`).join(';');
 }
 
 function getSelectionPosition() {
@@ -75,6 +90,48 @@ function getSelectionPosition() {
   return null;
 }
 
+/**
+  Функционал кнопки закладки
+*/
+function removeOldButton() {
+  let existingButton = document.getElementById(btnId);
+
+  if (existingButton) {
+    existingButton.remove();
+  }
+}
+
+function createBookmarkButton(selectedText) {
+  removeOldButton();
+
+  const button = document.createElement('div');
+  button.id = btnId;
+  button.style.cssText = getCSSText(btnStyles);
+
+  button.onmouseover = function() {
+    this.style.transform = 'scale(1.1)';
+  };
+
+  button.onmouseout = function() {
+    this.style.transform = 'scale(1)';
+  };
+
+  button.innerHTML = btnIcon;
+
+  button.onclick = function(e) {
+    e.stopPropagation();
+
+    saveNote(selectedText);
+    this.remove();
+
+    displayBookmarksList();
+
+    return false;
+  };
+
+  return button;
+}
+
 function saveNote(selectedText) {
   const position = getSelectionPosition();
 
@@ -91,7 +148,7 @@ function saveNote(selectedText) {
     timestamp: Date.now()
   };
 
-  let savedData = localStorage.getItem('pageNotes');
+  let savedData = localStorage.getItem(storageId);
   let allNotes = savedData ? JSON.parse(savedData) : [];
 
   let urlEntry = allNotes.find(entry => entry.url === currentUrl);
@@ -107,17 +164,203 @@ function saveNote(selectedText) {
     allNotes.push(urlEntry);
   }
 
-  localStorage.setItem('pageNotes', JSON.stringify(allNotes));
+  localStorage.setItem(storageId, JSON.stringify(allNotes));
+}
+
+/**
+ * Функционал элементов закладок
+ */
+function createNoteItemHTML(note) {
+  const displayText = note.text.length > 70 ? note.text.substring(0, 70) + '...' : note.text;
+
+  return `
+    <div style="font-size: 14px; line-height: 1.4; margin-bottom: 4px; word-break: break-word;">${displayText}</div>
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <button class="${noteDeleteBtnClass}" data-timestamp="${note.timestamp}" style="
+        background-color: transparent;
+        border: none;
+        color: #ff5252;
+        cursor: pointer;
+        font-size: 12px;
+        padding: 2px 6px;
+      ">Удалить</button>
+    </div>
+  `;
+}
+
+function createNoteItem(note) {
+  const noteElement = document.createElement('div');
+
+  noteElement.style.cssText = getCSSText(noteElementStyles);
+  noteElement.innerHTML = createNoteItemHTML(note);
+
+  noteElement.onmouseover = function() {
+    this.style.backgroundColor = '#f8f9fb';
+  };
+
+  noteElement.onmouseout = function() {
+    this.style.backgroundColor = 'white';
+  };
+
+  noteElement.addEventListener('click', function(e) {
+    if (e.target.className === noteDeleteBtnClass) return;
+
+    window.scrollTo({
+      top: note.position.top - 100,
+      behavior: 'smooth'
+    });
+
+    // TODO: Добавить выделение текста
+    // const highlightElement = document.createElement('div');
+    // highlightElement.style.cssText = `
+    //   position: absolute;
+    //   left: ${note.position.left - 20}px;
+    //   top: ${note.position.top - 20}px;
+    //   width: 40px;
+    //   height: 40px;
+    //   background-color: rgba(74, 107, 175, 0.3);
+    //   border-radius: 50%;
+    //   pointer-events: none;
+    //   animation: pageNotesPulse 1.5s ease-out;
+    //   animation-iteration-count: 3;
+    // `;
+
+    // document.body.appendChild(highlightElement);
+
+    // // Удаляем выделение через 5 секунд
+    // setTimeout(() => {
+    //   highlightElement.remove();
+    // }, 5000);
+  });
+
+  noteElement.querySelector(`.${noteDeleteBtnClass}`).addEventListener('click', function(e) {
+    e.stopPropagation();
+
+    const timestamp = parseInt(this.getAttribute('data-timestamp'));
+    deleteNote(timestamp);
+    noteElement.remove();
+
+    const bookmarksList = document.getElementById(listId);
+    const notesContainer = bookmarksList.querySelector(`.${notesContainerClass}`);
+
+    if (notesContainer.children.length === 0) {
+      bookmarksList.remove();
+    }
+  });
+
+  return noteElement;
+}
+
+function deleteNote(timestamp) {
+  const currentUrl = window.location.href;
+  let savedData = localStorage.getItem(storageId);
+
+  if (!savedData) return;
+
+  let allNotes = JSON.parse(savedData);
+  let urlEntry = allNotes.find(entry => entry.url === currentUrl);
+
+  if (!urlEntry) return;
+
+  urlEntry.notes = urlEntry.notes.filter(note => note.timestamp !== timestamp);
+
+  if (urlEntry.notes.length === 0) {
+    allNotes = allNotes.filter(entry => entry.url !== currentUrl);
+  }
+
+  localStorage.setItem(storageId, JSON.stringify(allNotes));
+}
+
+/**
+ * Функционал таблички с закладками
+ */
+function removeOldList() {
+  const existingList = document.getElementById(listId);
+
+  if (existingList) {
+    existingList.remove();
+  }
+}
+
+function getHeaderBookmarkListHTML() {
+  return `
+    <div>
+      <h2 style="margin: 0; font-size: 16px; font-weight: 600;">Заметки на странице</h2>
+      <div style="background-color: rgba(255, 255, 255, 0.2); padding: 2px 6px; border-radius: 12px; font-size: 11px; margin-top: 4px; display: inline-block;">
+        ${document.title.substring(0, 30)}${document.title.length > 30 ? '...' : ''}
+      </div>
+    </div>
+    <button id="${closeNotesListBtnId}" style="
+      background: none;
+      border: none;
+      color: white;
+      cursor: pointer;
+      padding: 0;
+      font-size: 18px;
+      line-height: 1;
+    ">×</button>
+  `
+}
+
+function createBookmarkList() {
+  removeOldList();
+
+  const list = document.createElement('div');
+  list.id = listId;
+  list.style.cssText = getCSSText(bookmarkListStyles);
+
+  const header = document.createElement('div');
+  header.style.cssText = getCSSText(headerBookmarkListStyles);
+
+  header.innerHTML = getHeaderBookmarkListHTML();
+
+  list.appendChild(header);
+
+  const notesContainer = document.createElement('div');
+  notesContainer.className = notesContainerClass;
+  notesContainer.style.cssText = getCSSText(notesContainerStyles);
+
+  list.appendChild(notesContainer);
+
+  header.querySelector(`#${closeNotesListBtnId}`).addEventListener('click', function() {
+    list.remove();
+  });
+
+  return list;
+}
+
+function displayBookmarksList() {
+  const savedData = localStorage.getItem(storageId);
+  if (!savedData) return;
+
+  const allNotes = JSON.parse(savedData);
+  const currentUrl = window.location.href;
+  const urlEntry = allNotes.find(entry => entry.url === currentUrl);
+
+  if (!urlEntry || urlEntry.notes.length === 0) return;
+
+  const bookmarksList = createBookmarkList();
+  document.body.appendChild(bookmarksList);
+
+  const notesContainer = bookmarksList.querySelector(`.${notesContainerClass}`);
+
+  urlEntry.notes
+    .sort((a, b) => b.timestamp - a.timestamp)
+    .forEach(note => {
+      const noteElement = createNoteItem(note);
+      notesContainer.appendChild(noteElement);
+    });
 }
 
 document.addEventListener('mouseup', function(e) {
   // Короткая задержка, чтобы дать возможность сработать onclick кнопки
   setTimeout(() => {
     const selection = window.getSelection();
-    const selectedText = selection.toString().trim();
+    const selectedText = selection.toString();
 
-    // Проверяем, что это не клик по нашей кнопке
-    if (e.target.id === btnId || e.target.closest(`#${btnId}`)) {
+    // Проверяем, что это не клик по нашим элементам интерфейса
+    if (e.target.id === btnId || e.target.closest(`#${btnId}`) ||
+        e.target.id === listId || e.target.closest(`#${listId}`)) {
       return;
     }
 
@@ -125,7 +368,7 @@ document.addEventListener('mouseup', function(e) {
       const position = getSelectionPosition();
 
       if (position) {
-        const button = createBookmarkButton();
+        const button = createBookmarkButton(selectedText);
 
         button.style.left = `${position.left + 5}px`;
         button.style.top = `${position.top - 20}px`;
@@ -143,7 +386,9 @@ document.addEventListener('mouseup', function(e) {
 });
 
 document.addEventListener('click', function(e) {
-  if (e.target.id !== btnId && !e.target.closest(`#${btnId}`)) {
+  // Если клик не по кнопке и не по списку заметок, удаляем кнопку
+  if (e.target.id !== btnId && !e.target.closest(`#${btnId}`) &&
+      e.target.id !== listId && !e.target.closest(`#${listId}`)) {
     const button = document.getElementById(btnId);
 
     if (button) {
@@ -162,5 +407,26 @@ style.textContent = `
     from { opacity: 0; transform: scale(0.8); }
     to { opacity: 1; transform: scale(1); }
   }
+
+  @keyframes pageNotesSlideIn {
+    from { transform: translateX(30px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+
+  @keyframes pageNotesPulse {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.5); opacity: 0.4; }
+    100% { transform: scale(1); opacity: 1; }
+  }
 `;
 document.head.appendChild(style);
+
+// Отображаем список закладок при загрузке страницы, если они есть
+document.addEventListener('DOMContentLoaded', function() {
+  displayBookmarksList();
+});
+
+// На случай, если страница уже загружена
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+  displayBookmarksList();
+}
